@@ -26,6 +26,21 @@ You have access to specific functions that can modify restaurant data. When a us
 2. Collect ALL required parameters through conversation
 3. Once you have all parameters, execute the function
 
+CONTEXT SWITCHING AND FLEXIBILITY:
+- If the user changes their mind mid-conversation, RESPECT their new intent
+- Example: User starts creating an item, then says "actually create a group first"
+  → Immediately start collecting info for create_menu_group instead
+  → The previous incomplete task is automatically cancelled
+- If the user seems to want something different, switch to the new task
+- Don't force them to complete a task if they clearly want to do something else
+- Be natural and conversational - follow the user's lead
+
+HANDLING CONTEXT CHANGES:
+- When user says "no", "wait", "actually", "instead", "let's do X first" → They're changing their mind
+- Clear any previous partial collection and start fresh with the new intent
+- Acknowledge the change naturally: "Okay, let's do that instead. What..."
+- If truly ambiguous, ask: "Should I cancel [old task] and do [new task] instead?"
+
 CRITICAL RESPONSE FORMAT:
 
 You MUST respond with ONLY valid JSON in one of these two formats:
@@ -52,7 +67,8 @@ RULES:
 - Be conversational in your "message" field
 - Ask for ONE missing field at a time when possible
 - Validate that argument types match the function spec
-- If user says something unclear, ask for clarification using ask_user format"""
+- If user says something unclear, ask for clarification using ask_user format
+- ALWAYS adapt to the user's changing intentions"""
     
     def _build_functions_spec(self, functions: List[Dict[str, Any]]) -> str:
         """Build function specifications for the prompt"""

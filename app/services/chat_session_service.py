@@ -1,4 +1,5 @@
 """Chat session service for managing conversation state and orchestration"""
+import uuid
 from sqlalchemy.orm import Session
 from app.models import ChatSession
 from app.schemas import ChatRequest, ChatResponse, LLMRequest
@@ -81,7 +82,7 @@ class ChatSessionService:
         llm_response: Any
     ):
         """
-        Update chat session based on LLM response
+        Update chat session based on LLM response with smart context switching
         
         Args:
             db: Database session
@@ -89,7 +90,12 @@ class ChatSessionService:
             llm_response: LLM response object
         """
         if llm_response.type == "ask_user":
-            # Update session with partial collection state
+            # Check if function changed (context switch detected)
+            if session.current_function and llm_response.current_function:
+                if session.current_function != llm_response.current_function:
+                    print(f"🔄 Context switch detected: {session.current_function} → {llm_response.current_function}")
+            
+            # Update session with new/continued collection state
             session.status = "collecting"
             session.current_function = llm_response.current_function
             session.collected_arguments = llm_response.partial_arguments or {}
@@ -106,6 +112,43 @@ class ChatSessionService:
         
         db.commit()
     
+    def handle_special_commands(
+        self,
+        db: Session,
+        session: ChatSession,
+        message: str
+    ) -> ChatResponse:
+        """
+        Handle special commands like cancel, reset, etc.
+        
+        Args:
+            db: Database session
+            session: Chat session
+            message: User message
+            
+        Returns:
+            ChatResponse if special command handled, None otherwise
+        """
+        message_lower = message.lower().strip()
+        cancel_keywords = ["cancel", "reset", "start over", "nevermind", "forget it", "clear"]
+        
+        if message_lower in cancel_keywords:
+            # Clear session state
+            session.current_function = None
+            session.collected_arguments = {}
+            session.missing_fields = []
+            session.status = "idle"
+            session.last_bot_message = None
+            db.commit()
+            
+            return ChatResponse(
+                reply="Okay, I've cleared our conversation. What would you like to do?",
+                type="reset",
+                session_id=session.id
+            )
+        
+        return None
+    
     async def process_message(
         self,
         db: Session,
@@ -121,12 +164,24 @@ class ChatSessionService:
         Returns:
             Chat response
         """
+        # Auto-generate session_id if not provided
+        if not request.session_id:
+            session_id = f"session-{uuid.uuid4()}"
+            print(f"🆕 Auto-generated session_id: {session_id}")
+        else:
+            session_id = request.session_id
+        
         # Get or create session
         session = self.get_or_create_session(
             db=db,
-            session_id=request.session_id,
+            session_id=session_id,
             owner_id=request.owner_id
         )
+        
+        # Check for special commands (cancel, reset, etc.)
+        special_response = self.handle_special_commands(db, session, request.message)
+        if special_response:
+            return special_response
         
         # Build session state
         session_state = self.build_session_state(
@@ -152,7 +207,7 @@ class ChatSessionService:
             return ChatResponse(
                 reply=f"I encountered an error: {str(e)}",
                 type="error",
-                session_id=request.session_id
+                session_id=session_id
             )
         
         # Handle LLM response
@@ -163,7 +218,7 @@ class ChatSessionService:
             return ChatResponse(
                 reply=llm_response.message,
                 type="ask_user",
-                session_id=request.session_id
+                session_id=session_id
             )
         
         elif llm_response.type == "call_function":
@@ -190,20 +245,20 @@ class ChatSessionService:
                     reply=result,
                     type="result",
                     function=function_name,
-                    session_id=request.session_id
+                    session_id=session_id
                 )
             
             except KeyError as e:
                 return ChatResponse(
                     reply=f"Unknown function: {function_name}",
                     type="error",
-                    session_id=request.session_id
+                    session_id=session_id
                 )
             except Exception as e:
                 return ChatResponse(
                     reply=f"Error executing function: {str(e)}",
                     type="error",
-                    session_id=request.session_id
+                    session_id=session_id
                 )
         
         else:
@@ -211,7 +266,7 @@ class ChatSessionService:
             return ChatResponse(
                 reply="I didn't understand that. Could you please rephrase?",
                 type="ask_user",
-                session_id=request.session_id
+                session_id=session_id
             )
 
 

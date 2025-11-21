@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any, List
 
 class ChatRequest(BaseModel):
     """Chat request schema"""
-    session_id: str = Field(..., description="Unique session identifier")
+    session_id: Optional[str] = Field(None, description="Unique session identifier (auto-generated if not provided)")
     owner_id: int = Field(..., description="Restaurant owner ID")
     restaurant_id: int = Field(..., description="Restaurant ID")
     message: str = Field(..., description="User message")
