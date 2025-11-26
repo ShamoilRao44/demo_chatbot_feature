@@ -1,6 +1,6 @@
 """Redis-based memory management for chat sessions"""
 import json
-import redis # type: ignore
+import redis
 from typing import Dict, Any, List, Optional
 from app.config import get_settings
 

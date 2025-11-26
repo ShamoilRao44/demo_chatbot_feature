@@ -35,4 +35,12 @@ def get_db() -> Session: # type: ignore
 
 def init_db():
     """Initialize database tables"""
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        # If database connection fails, log the error but don't crash
+        # This allows development without a running database
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Could not initialize database: {e}")
+        logger.info("Running in offline mode - some features may not work")
