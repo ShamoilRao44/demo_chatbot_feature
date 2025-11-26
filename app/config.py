@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # Database
     database_url: str = os.getenv(
         "DATABASE_URL",
-        "postgresql://postgres:Shampostgres2344!@localhost:5432/restaurant_agent"
+        "postgresql://postgres:postgres@localhost:5432/restaurant_agent"
     )
     
     # LLM

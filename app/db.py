@@ -21,7 +21,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-def get_db() -> Session:
+def get_db() -> Session: # type: ignore
     """
     Dependency function to get database session.
     Yields a database session and ensures it's closed after use.

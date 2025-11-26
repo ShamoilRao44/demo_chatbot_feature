@@ -1,7 +1,7 @@
 """Menu action handlers for restaurant management"""
 from sqlalchemy.orm import Session
 from app.models import Restaurant, MenuGroup, MenuItem
-from app.function_registry import register_function, register_handler
+from app.function_registry import register_function, register_handler # type: ignore
 from app.utils import format_price, parse_price
 
 

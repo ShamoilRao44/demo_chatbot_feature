@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.db import get_db, init_db
 from app.schemas import ChatRequest, ChatResponse
 from app.services.chat_session_service import chat_service
+from app.agent.tools import dashboard_tools, menu_tools, groups_tools, reports_tools, extras_tools, orders_tools
 
 # Import actions to register functions
 from app.actions import dashboard, menu

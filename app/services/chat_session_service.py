@@ -3,8 +3,8 @@ import uuid
 from sqlalchemy.orm import Session
 from app.models import ChatSession
 from app.schemas import ChatRequest, ChatResponse, LLMRequest
-from app.llm_client import llm_client
-from app.function_registry import function_registry
+from app.llm_client import llm_client # type: ignore
+from app.function_registry import function_registry # type: ignore
 from typing import Dict, Any
 
 

@@ -1,7 +1,7 @@
 """Dashboard action handlers for restaurant management"""
 from sqlalchemy.orm import Session
 from app.models import Restaurant
-from app.function_registry import register_function, register_handler
+from app.function_registry import register_function, register_handler # pyright: ignore[reportMissingImports]
 from app.utils import validate_business_hours_format
 
 
