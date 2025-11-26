@@ -11,7 +11,6 @@ from app.agent.router import process_chat
 from app.agent.memory import memory_manager
 from app.agent.function_registry import function_registry
 from app.agent.tools import dashboard_tools, menu_tools, groups_tools, reports_tools, extras_tools, orders_tools
-from app.actions import dashboard, menu
 
 settings = get_settings()
 
