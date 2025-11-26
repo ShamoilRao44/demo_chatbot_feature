@@ -1,7 +1,7 @@
 """Dashboard tools for restaurant management"""
 from typing import Dict, Any
 from app.agent.function_registry import register_function, register_handler
-from app.utils import backend_client
+from app.utils import backend_client  # ✅ Works
 
 
 # ============================================================================
