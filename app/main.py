@@ -7,10 +7,10 @@ from contextlib import asynccontextmanager
 from app.config import get_settings
 from app.db import get_db, init_db
 from app.schemas import ChatRequest, ChatResponse
-from app.services.chat_session_service import chat_service
+from app.agent.router import process_chat
+from app.agent.memory import memory_manager
+from app.agent.function_registry import function_registry
 from app.agent.tools import dashboard_tools, menu_tools, groups_tools, reports_tools, extras_tools, orders_tools
-
-# Import actions to register functions
 from app.actions import dashboard, menu
 
 settings = get_settings()
@@ -18,13 +18,10 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan events for startup and shutdown"""
-    # Startup: Initialize database
     init_db()
     print("Database initialized")
-    print(f"Registered functions: {len(chat_service.function_registry.get_function_specs())}")
+    print(f"Registered functions: {len(function_registry.get_function_specs())}")
     yield
-    # Shutdown: cleanup if needed
     print("Shutting down...")
 
 
@@ -61,30 +58,18 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    redis_ok = memory_manager.ping()
     return {
-        "status": "healthy",
-        "registered_functions": len(chat_service.function_registry.get_function_specs())
+        "status": "healthy" if redis_ok else "degraded",
+        "redis": "connected" if redis_ok else "disconnected",
+        "registered_functions": len(function_registry.get_function_specs())
     }
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(
-    request: ChatRequest,
-    db: Session = Depends(get_db)
-) -> ChatResponse:
-    """
-    Main chat endpoint for processing user messages
-    
-    Args:
-        request: Chat request with session_id, owner_id, restaurant_id, and message
-        db: Database session
-        
-    Returns:
-        Chat response with reply and type
-    """
+async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     try:
-        response = await chat_service.process_message(db=db, request=request)
+        response = await process_chat(request)
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -92,12 +77,8 @@ async def chat_endpoint(
 
 @app.get("/functions")
 async def list_functions():
-    """List all available functions"""
-    functions = chat_service.function_registry.get_function_specs()
-    return {
-        "count": len(functions),
-        "functions": functions
-    }
+    functions = function_registry.get_function_specs()
+    return {"count": len(functions), "functions": functions}
 
 
 if __name__ == "__main__":

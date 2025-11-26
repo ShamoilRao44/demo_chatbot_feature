@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3")
     ollama_timeout: int = 120
     
+    redis_host: str = os.getenv("REDIS_HOST", "localhost")
+    redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
+    redis_db: int = int(os.getenv("REDIS_DB", "0"))
+    redis_password: str = os.getenv("REDIS_PASSWORD", "")
+    session_ttl: int = 3600
+    backend_url: str = os.getenv("BACKEND_URL", "http://localhost:8001")
+    
     # API
     api_host: str = "0.0.0.0"
     api_port: int = 8000
