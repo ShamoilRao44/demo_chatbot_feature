@@ -1,11 +1,11 @@
-"""Dashboard tools for restaurant management"""
+"""Dashboard tools for restaurant management - CORRECTED FOR ACTUAL BACKEND"""
 from typing import Dict, Any
 from app.agent.function_registry import register_function, register_handler
-from app.utils import backend_client  # ✅ Works
+from app.utils import backend_client
 
 
 # ============================================================================
-# FUNCTION 1: Get Restaurant Info
+# FUNCTION 1: Get Restaurant Info (PLACEHOLDER - no direct API)
 # ============================================================================
 
 register_function(
@@ -27,26 +27,13 @@ register_function(
 
 @register_handler("get_restaurant_info")
 async def handle_get_restaurant_info(restaurant_id: int) -> str:
-    """Get restaurant information"""
-    # Call backend to get restaurant details
-    # Note: Your backend might not have this exact endpoint
-    # This is a placeholder - adjust based on actual API
-    response = await backend_client.post("/dashboard/restaurant-info", {"r_id": restaurant_id})
-    
-    if response.get("status") == "200":
-        data = response.get("data", {})
-        return f"""Restaurant Information:
-Name: {data.get('name', 'N/A')}
-Address: {data.get('address', 'Not set')}
-Prep Time: {data.get('est_prep_time', 'N/A')} minutes
-Status: {'Paused' if data.get('is_paused') else 'Active'}
-"""
-    else:
-        return f"Could not fetch restaurant info: {response.get('msg', 'Unknown error')}"
+    """Get restaurant information - No direct API, return message"""
+    return "ℹ️ Restaurant info can be updated using customize restaurant function. Use specific functions to change prep time, address, or hours."
 
 
 # ============================================================================
 # FUNCTION 2: Update Prep Time
+# ACTUAL API: POST /customize/restaurant with est_prep_time field
 # ============================================================================
 
 register_function(
@@ -72,10 +59,10 @@ register_function(
 
 @register_handler("update_prep_time")
 async def handle_update_prep_time(restaurant_id: int, prep_time_minutes: int) -> str:
-    """Update preparation time"""
-    response = await backend_client.post("/dashboard/changePrepTime", {
+    """Update preparation time using /customize/restaurant"""
+    response = await backend_client.post("/customize/restaurant", {
         "r_id": restaurant_id,
-        "preparation_time": prep_time_minutes
+        "est_prep_time": prep_time_minutes  # ✅ CORRECT FIELD NAME
     })
     
     if response.get("status") == "200":
@@ -86,6 +73,7 @@ async def handle_update_prep_time(restaurant_id: int, prep_time_minutes: int) ->
 
 # ============================================================================
 # FUNCTION 3: Update Business Hours
+# ACTUAL API: POST /customize/restaurant with opening_hours field
 # ============================================================================
 
 register_function(
@@ -124,13 +112,13 @@ async def handle_update_business_hours(
     opening_time: str,
     closing_time: str
 ) -> str:
-    """Update business hours"""
+    """Update business hours using /customize/restaurant"""
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     day_name = days[day_of_week] if 0 <= day_of_week <= 6 else "Unknown"
     
-    response = await backend_client.post("/dashboard/changeHours", {
+    response = await backend_client.post("/customize/restaurant", {
         "r_id": restaurant_id,
-        "opening_hours": [{
+        "opening_hours": [{  # ✅ CORRECT FIELD NAME
             "day_of_week": day_of_week,
             "opening_time": opening_time,
             "closing_time": closing_time
@@ -144,7 +132,7 @@ async def handle_update_business_hours(
 
 
 # ============================================================================
-# FUNCTION 4: Pause Restaurant
+# FUNCTION 4: Pause Restaurant (NO API AVAILABLE)
 # ============================================================================
 
 register_function(
@@ -166,20 +154,12 @@ register_function(
 
 @register_handler("pause_restaurant")
 async def handle_pause_restaurant(restaurant_id: int) -> str:
-    """Pause restaurant"""
-    response = await backend_client.post("/dashboard/pause", {
-        "r_id": restaurant_id,
-        "is_paused": True
-    })
-    
-    if response.get("status") == "200":
-        return "✅ Restaurant paused successfully. No new orders will be accepted."
-    else:
-        return f"❌ Failed to pause restaurant: {response.get('msg', 'Unknown error')}"
+    """Pause restaurant - API not available in backend"""
+    return "❌ Pause restaurant functionality is not available in the current backend. Please contact support to add this feature."
 
 
 # ============================================================================
-# FUNCTION 5: Unpause Restaurant
+# FUNCTION 5: Unpause Restaurant (NO API AVAILABLE)
 # ============================================================================
 
 register_function(
@@ -201,20 +181,13 @@ register_function(
 
 @register_handler("unpause_restaurant")
 async def handle_unpause_restaurant(restaurant_id: int) -> str:
-    """Unpause restaurant"""
-    response = await backend_client.post("/dashboard/pause", {
-        "r_id": restaurant_id,
-        "is_paused": False
-    })
-    
-    if response.get("status") == "200":
-        return "✅ Restaurant unpaused successfully. Now accepting orders."
-    else:
-        return f"❌ Failed to unpause restaurant: {response.get('msg', 'Unknown error')}"
+    """Unpause restaurant - API not available in backend"""
+    return "❌ Unpause restaurant functionality is not available in the current backend. Please contact support to add this feature."
 
 
 # ============================================================================
 # FUNCTION 6: Update Restaurant Address
+# ACTUAL API: POST /customize/restaurant with address field
 # ============================================================================
 
 register_function(
@@ -240,10 +213,10 @@ register_function(
 
 @register_handler("update_restaurant_address")
 async def handle_update_restaurant_address(restaurant_id: int, address: str) -> str:
-    """Update restaurant address"""
-    response = await backend_client.post("/dashboard/changeAddress", {
+    """Update restaurant address using /customize/restaurant"""
+    response = await backend_client.post("/customize/restaurant", {
         "r_id": restaurant_id,
-        "address": address
+        "address": address  # ✅ CORRECT FIELD NAME
     })
     
     if response.get("status") == "200":
