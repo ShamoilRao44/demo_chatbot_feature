@@ -7,11 +7,27 @@ settings = get_settings()
 
 
 class BackendClient:
-    """Client for calling main restaurant backend APIs"""
+    """Client for calling main restaurant backend APIs with authentication"""
     
     def __init__(self):
         self.base_url = settings.backend_url
         self.timeout = 30.0
+        self._access_token: Optional[str] = None
+    
+    def set_access_token(self, token: str):
+        """Set the access token for authenticated requests"""
+        self._access_token = token
+    
+    def clear_access_token(self):
+        """Clear the access token"""
+        self._access_token = None
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """Build headers with authentication if token is set"""
+        headers = {"Content-Type": "application/json"}
+        if self._access_token:
+            headers["Authorization"] = f"Bearer {self._access_token}"
+        return headers
     
     async def call(
         self,
@@ -21,7 +37,7 @@ class BackendClient:
         params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Make HTTP call to main backend
+        Make HTTP call to main backend with authentication
         
         Args:
             endpoint: API endpoint (e.g., "/groups/create")
@@ -40,7 +56,8 @@ class BackendClient:
                     method=method,
                     url=url,
                     json=json_data,
-                    params=params
+                    params=params,
+                    headers=self._get_headers()
                 )
                 response.raise_for_status()
                 return response.json()
@@ -59,19 +76,19 @@ class BackendClient:
     # Convenience methods for common operations
     
     async def get(self, endpoint: str, **params) -> Dict[str, Any]:
-        """GET request"""
+        """GET request with authentication"""
         return await self.call(endpoint, "GET", params=params)
     
     async def post(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """POST request"""
+        """POST request with authentication"""
         return await self.call(endpoint, "POST", json_data=data)
     
     async def put(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """PUT request"""
+        """PUT request with authentication"""
         return await self.call(endpoint, "PUT", json_data=data)
     
     async def delete(self, endpoint: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """DELETE request"""
+        """DELETE request with authentication"""
         return await self.call(endpoint, "DELETE", json_data=data)
 
 
@@ -80,7 +97,7 @@ backend_client = BackendClient()
 
 
 # ============================================================================
-# Re-export utility functions from app.utils module
+# Re-export utility functions
 # ============================================================================
 
 def format_price(cents: int) -> str:
@@ -164,4 +181,3 @@ def validate_business_hours_format(hours_str: str) -> bool:
         return True
     except (ValueError, AttributeError):
         return False
-

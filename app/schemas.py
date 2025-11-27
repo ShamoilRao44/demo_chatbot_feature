@@ -13,6 +13,7 @@ class ChatRequest(BaseModel):
     restaurant_id: int = Field(..., description="Restaurant ID")
     owner_id: int = Field(..., description="Owner ID")
     message: str = Field(..., description="User message in any language")
+    access_token: str = Field(..., description="Owner's JWT access token for backend authentication")
 
 
 class ChatResponse(BaseModel):
