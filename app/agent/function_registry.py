@@ -82,8 +82,7 @@ class FunctionRegistry:
     async def execute_function(
         self,
         name: str,
-        arguments: Dict[str, Any],
-        db_session: Any
+        arguments: Dict[str, Any]
     ) -> str:
         """
         Execute a registered function
@@ -91,13 +90,12 @@ class FunctionRegistry:
         Args:
             name: Function name
             arguments: Function arguments
-            db_session: Database session
             
         Returns:
             Result message
         """
         handler = self.get_handler(name)
-        result = await handler(db_session, **arguments)
+        result = await handler(**arguments)  # ← FIXED: No db_session parameter
         return result
 
 

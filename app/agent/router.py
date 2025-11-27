@@ -8,36 +8,56 @@ from app.agent.function_registry import function_registry
 from app.utils import backend_client
 
 
-async def fetch_restaurant_context(restaurant_id: int, session_id: str) -> Dict[str, Any]:
+# Functions that require group context
+FUNCTIONS_NEEDING_GROUPS = [
+    "create_menu_item",
+    "get_menu_items"
+]
+
+
+async def fetch_restaurant_context(
+    restaurant_id: int, 
+    session_id: str,
+    function_name: str = None
+) -> Dict[str, Any]:
     """
-    Fetch and cache restaurant context (groups, etc.)
+    Fetch restaurant context ONLY when needed
     
-    This reduces repeated backend calls during a conversation
-    NOTE: Access token must be set before calling this
+    Args:
+        restaurant_id: Restaurant ID
+        session_id: Session ID for caching
+        function_name: Current function being executed
+        
+    Returns:
+        Context dict (may be empty if groups not needed)
     """
     # Check if already cached
     cached = memory_manager.get_context(session_id)
     if cached:
         return cached
     
-    # Fetch groups from backend (will use access token from backend_client)
-    groups_response = await backend_client.post("/groups/", {"r_id": restaurant_id})
+    context = {"restaurant_id": restaurant_id}
     
-    context = {
-        "restaurant_id": restaurant_id,
-        "groups": []
-    }
-    
-    if groups_response.get("status") == "200":
-        groups_data = groups_response.get("data", {}).get("groups", [])
-        context["groups"] = [
-            {
-                "id": g.get("g_id"),
-                "name": g.get("gname"),
-                "icon": g.get("g_icon")
-            }
-            for g in groups_data
-        ]
+    # Only fetch groups if function needs them
+    if function_name in FUNCTIONS_NEEDING_GROUPS:
+        print(f"🔍 Fetching groups for function: {function_name}")
+        groups_response = await backend_client.post("/groups/", {"r_id": restaurant_id})
+        
+        if groups_response.get("status") == "200":
+            groups_data = groups_response.get("data", {}).get("groups", [])
+            context["groups"] = [
+                {
+                    "id": g.get("g_id"),
+                    "name": g.get("gname"),
+                    "icon": g.get("g_icon")
+                }
+                for g in groups_data
+            ]
+        else:
+            context["groups"] = []
+    else:
+        print(f"⏭️  Skipping group fetch for function: {function_name}")
+        context["groups"] = []
     
     # Cache for this session
     memory_manager.set_context(session_id, context)
@@ -50,11 +70,11 @@ async def process_chat(request: ChatRequest) -> ChatResponse:
     Main chat processing pipeline
     
     Flow:
-    1. Set access token for backend authentication
+    1. Set access token (if provided)
     2. Generate/validate session_id
     3. Load session state from Redis
     4. Load conversation history from Redis
-    5. Fetch restaurant context (cached)
+    5. Conditionally fetch restaurant context
     6. Call LLM with full context
     7. Handle response (ask_user or call_function)
     8. Update Redis
@@ -63,9 +83,12 @@ async def process_chat(request: ChatRequest) -> ChatResponse:
     """
     
     try:
-        # Step 1: Set access token for all backend API calls
-        backend_client.set_access_token(request.access_token)
-        print(f"🔐 Access token set for backend authentication")
+        # Step 1: Set access token ONLY if provided
+        if request.access_token:
+            backend_client.set_access_token(request.access_token)
+            print(f"🔐 Access token set")
+        else:
+            print(f"🔓 No access token (public endpoint)")
         
         # Step 2: Generate session_id if not provided
         if not request.session_id:
@@ -85,14 +108,19 @@ async def process_chat(request: ChatRequest) -> ChatResponse:
         
         # Step 3: Load session state
         session_state = memory_manager.get_session_state(session_id)
-        print(f"📊 Session state: {session_state['status']}, Function: {session_state['current_function']}")
+        current_function = session_state.get('current_function')
+        print(f"📊 Session state: {session_state['status']}, Function: {current_function}")
         
         # Step 4: Load conversation history
         conversation_history = memory_manager.get_conversation_history(session_id)
         print(f"💬 History: {len(conversation_history)} messages")
         
-        # Step 5: Fetch restaurant context (with authentication)
-        restaurant_context = await fetch_restaurant_context(request.restaurant_id, session_id)
+        # Step 5: Fetch context ONLY if current function needs groups
+        restaurant_context = await fetch_restaurant_context(
+            request.restaurant_id, 
+            session_id,
+            current_function
+        )
         print(f"🏪 Context: {len(restaurant_context.get('groups', []))} groups")
         
         # Step 6: Build LLM request
@@ -134,9 +162,10 @@ async def process_chat(request: ChatRequest) -> ChatResponse:
             memory_manager.add_to_history(session_id, "assistant", llm_response.message)
             
             # Check for context switch
-            if session_state.get("current_function") and \
-               llm_response.current_function != session_state.get("current_function"):
-                print(f"🔄 Context switch: {session_state.get('current_function')} → {llm_response.current_function}")
+            if current_function and llm_response.current_function != current_function:
+                print(f"🔄 Context switch: {current_function} → {llm_response.current_function}")
+                # Clear old context when switching functions
+                memory_manager.clear_context(session_id)
             
             return ChatResponse(
                 type="ask_user",
@@ -154,9 +183,10 @@ async def process_chat(request: ChatRequest) -> ChatResponse:
             if "restaurant_id" not in arguments:
                 arguments["restaurant_id"] = request.restaurant_id
             
-            print(f"⚡ Executing: {function_name}")
+            print(f"⚡ Executing: {function_name} with args: {arguments}")
             
             try:
+                # Execute function (no db_session parameter)
                 result = await function_registry.execute_function(function_name, arguments)
                 print(f"✅ Result: {result[:100]}...")
                 
@@ -178,6 +208,8 @@ async def process_chat(request: ChatRequest) -> ChatResponse:
             
             except Exception as e:
                 print(f"❌ Function error: {e}")
+                import traceback
+                traceback.print_exc()
                 error_msg = f"Error executing {function_name}: {str(e)}"
                 memory_manager.add_to_history(session_id, "assistant", error_msg)
                 

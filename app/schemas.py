@@ -10,10 +10,9 @@ from typing import Optional, Dict, Any, List
 class ChatRequest(BaseModel):
     """Chat request from user/frontend"""
     session_id: Optional[str] = Field(None, description="Session ID (auto-generated if not provided)")
-    restaurant_id: int = Field(..., description="Restaurant ID")
-    owner_id: int = Field(..., description="Owner ID")
+    restaurant_id: int = Field(..., description="Restaurant ID (r_id)")
     message: str = Field(..., description="User message in any language")
-    access_token: str = Field(..., description="Owner's JWT access token for backend authentication")
+    access_token: Optional[str] = Field(None, description="Owner's JWT access token (optional, only for protected endpoints)")
 
 
 class ChatResponse(BaseModel):
@@ -57,5 +56,4 @@ class HealthResponse(BaseModel):
     """Health check response"""
     status: str
     redis: str
-    ollama: str
     registered_functions: int
